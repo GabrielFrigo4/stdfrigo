@@ -1,102 +1,118 @@
-# Frigo's Standard Random Library in C (stdrand)
- Uma biblioteca *header-only* em C de alto desempenho para geração de números pseudoaleatórios (PRNG). Esta biblioteca implementa a família de algoritmos **XORShift**, conhecidos por sua velocidade extrema e implementação compacta.
+# Frigo's Standard Library in C (stdfrigo)
+ **stdfrigo** é uma coleção de bibliotecas *header-only* em C (C99) focadas em **alta performance**, **simplicidade** e **zero dependências**.
 
- **Destaques:**
- * **Zero-Safe:** Utiliza internamente o algoritmo `SplitMix64` para inicialização (seeding), garantindo que o estado interno nunca fique zerado ou inválido, mesmo com seeds simples.
- * **Portátil:** Escrita em C99 padrão (`<stdint.h>`).
- * **Sem dependências:** Basta copiar `stdrand.h` para o seu projeto.
+ O objetivo deste projeto é fornecer implementações de algoritmos fundamentais (geração de números aleatórios, hashing, matemática) que sejam fáceis de integrar em qualquer projeto, sem a complexidade de sistemas de build pesados ou bibliotecas externas.
 
 ---
 
-## Random 32 bits
- Implementação do algoritmo **XORShift32**. Ideal para sistemas embarcados com pouca memória ou processadores de 32 bits onde a velocidade é crítica e o período curto não é um problema.
+## 📚 Módulos Disponíveis
+ Atualmente, a biblioteca é composta pelos seguintes módulos:
 
- * **Algoritmo:** XORShift32 (Marsaglia)
- * **Período:** $2^{32} - 1$
- * **Estado:** 4 bytes (`uint32_t`)
+### 1. `stdrand.h` (Random)
+ Geradores de números pseudoaleatórios (PRNG) baseados na família **XORShift** e acesso a geradores de hardware (RDRAND/RDSEED).
+ * **Algoritmos:** XORShift32, XORShift64, XORShift128+.
+ * **Hardware:** Suporte nativo a instruções Intel/AMD (`_rdrand`, `_rdseed`) para entropia pura.
+ * **API:** Inicialização segura (Zero-Safe) e construtores ergonômicos.
+ * [📖 Ler Documentação Completa (STDRAND.md)](docs/STDRAND.md)
 
-### API
- ```c
- // Estrutura de estado
- rand32_t rand32;
+### 2. `stdhash.h` (Hashing)
+ Algoritmos de hash não-criptográficos otimizados para velocidade e distribuição uniforme (Avalanche Effect).
+ * **Algoritmos:** MurmurHash3 Finalizer, Jenkins One-at-a-Time, FNV-1a.
+ * **Hardware:** Aceleração via instruções **SSE4.2** (CRC32-C) para hashear grandes buffers instantaneamente.
+ * **Funcionalidades:** Hashing de inteiros O(1), buffers e combinação de hashes.
+ * [📖 Ler Documentação Completa (STDHASH.md)](docs/STDHASH.md)
 
- // Inicialização (Seed)
- // Usa SplitMix internamente para expandir a seed de forma robusta
- rand32_seed(&rand32, 2147483647);
+### 3. `stdconst.h` (Constants)
+ Constantes matemáticas fundamentais pré-calculadas com precisão máxima para IEEE 754.
+ * **Matemática:** PI, Tau, Raízes Quadradas (Primos), Proporção Áurea (Phi).
+ * **Otimização:** Versões "Inversas" ($1/x$) para substituir divisões lentas por multiplicações.
+ * **Bitmasks:** Primos de Mersenne para máscaras de bits rápidas.
+ * [📖 Ler Documentação Completa (STDCONST.md)](docs/STDCONST.md)
 
- // Geração
- uint32_t num = rand32_next(&rand32);
+---
+
+## 🚀 Instalação
+ Como as bibliotecas são *header-only*, você pode simplesmente copiar os arquivos `.h` para o seu projeto. No entanto, para instalar no sistema (padrão `/usr/local/include`), utilize o `Makefile` incluído.
+
+ O sistema de instalação detecta automaticamente o ambiente (Linux/macOS ou MSYS2/Windows) para ajustar as permissões.
+ ```bash
+ # Instalar (copia todos os .h para o diretório de include do sistema)
+ make install
+
+ # Verificar se tudo foi instalado corretamente
+ make check
+
+ # Desinstalar
+ make uninstall
+```
+
+---
+
+## 🔧 Configuração de Ambiente (Windows / MSYS2)
+ Se você estiver utilizando **MSYS2** ou compilando no **Windows** e o compilador não encontrar os arquivos `.h` (erro `No such file or directory`), pode ser necessário adicionar o caminho de instalação (`/usr/local/include`) às variáveis de ambiente.
+
+### 1. No Terminal MSYS2 (Bash)
+ Para que o `gcc` ou `clang` encontre as bibliotecas automaticamente, adicione as variáveis ao seu arquivo de configuração do shell (ex: `.bashrc` ou `.zshrc`):
+ ```bash
+ export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
+ export CPLUS_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
+ export LIBRARY_PATH="$(cygpath -m /usr/local/lib)"
  ```
 
------
+ *Após adicionar, reinicie o terminal ou rode `source ~/.bashrc` ou  `source ~/.zshrc`.*
 
-## Random 64 bits
- Implementação do algoritmo **XORShift64**. É o padrão equilibrado para uso geral. Oferece um período longo o suficiente para a maioria das aplicações (jogos, embaralhamento de listas) com performance máxima em CPUs modernas de 64 bits.
+### 2. No Windows (Registro)
+ Se preferir configurar globalmente para o Windows (para usar via CMD ou PowerShell fora do MSYS2), você pode criar um arquivo `.reg`.
 
- * **Algoritmo:** XORShift64 (Marsaglia)
- * **Período:** $2^{64} - 1$
- * **Estado:** 8 bytes (`uint64_t`)
+ > **Nota:** Verifique se o caminho do seu MSYS2 é realmente `C:\msys64`. Se for diferente, ajuste os caminhos abaixo.
 
-### API
- ```c
- // Estrutura de estado
- rand64_t rand64;
+ Crie um arquivo chamado `config_env.reg` com o seguinte conteúdo e execute-o:
+ ```reg
+ Windows Registry Editor Version 5.00
 
- // Inicialização (Seed)
- rand64_seed(&rand64, 2305843009213693951ULL);
-
- // Geração
- uint64_t num = rand64_next(&rand64);
+ [HKEY_CURRENT_USER\Environment]
+ "C_INCLUDE_PATH"="C:\\msys64\\usr\\local\\include"
+ "CPLUS_INCLUDE_PATH"="C:\\msys64\\usr\\local\\include"
+ "LIBRARY_PATH"="C:\\msys64\\usr\\local\\lib"
  ```
 
------
+---
 
-## Random 128 bits
- Implementação do algoritmo **XORShift128+ (Plus)**. Esta variante adiciona uma soma não-linear (`+`) na saída, melhorando drasticamente a qualidade estatística e passando em testes rigorosos como o BigCrush.
+## ⚡ Exemplo de Uso
+ Após a instalação, basta incluir os headers desejados diretamente no seu código.
 
- Recomendado para simulações científicas ou quando se necessita de uma qualidade superior de aleatoriedade (especialmente para gerar `double` no intervalo [0, 1)).
-
- * **Algoritmo:** XORShift128+ (Vigna)
- * **Período:** $2^{128} - 1$
- * **Estado:** 16 bytes (`uint64_t[2]`)
- * **Saída:** Retorna 64 bits por chamada.
-
-### API
+ Este exemplo demonstra a integração dos três módulos: geração de sementes via hardware, hashing de IDs e uso de constantes matemáticas para otimização.
  ```c
- // Estrutura de estado
- rand128_t rand128;
+ #include <stdio.h>
+ #include <stdrand.h>
+ #include <stdhash.h>
+ #include <stdconst.h>
 
- // Inicialização (Seed)
- // O SplitMix inicializa ambas as partes do estado de 128 bits
- rand128_seed(&rand128, 2305843009213693951ULL);
+ int main() {
+     // 1. Inicializando o PRNG com entropia de hardware (Best Effort)
+     // Usa RDSEED se disponível, caindo para RDTSC se necessário.
+     rand64_t rng = rand64_init(rand64_hw_seed());
 
- // Geração
- uint64_t num = rand128_next(&rand128);
+     // 2. Gerando um ID aleatório
+     uint64_t random_id = rand64_next(&rng);
+
+     // 3. Calculando o hash desse ID (Transformando em índice de tabela)
+     uint64_t index = hash64_u64(random_id);
+
+     // 4. Exemplo de Otimização Matemática
+     // Em vez de: double val = (double)random_id / SQRT2_64;
+     // Usamos multiplicação pelo inverso pré-calculado (mais rápido):
+     double val = (double)random_id * INV_SQRT2_64;
+
+     // 5. Output
+     printf("ID Gerado : %llu\n", random_id);
+     printf("Hash Index: %llu\n", index);
+     printf("Calculo   : %.5f\n", val);
+     printf("Mersenne13: %u (Mask: 0x%X)\n", MERSENNE_13, MERSENNE_13);
+
+     return 0;
+ }
  ```
 
------
-
-## Conversão para Ponto Flutuante
- Para utilizar os geradores em simulações que requerem números reais no intervalo `[0, 1)`, a biblioteca fornece macros otimizadas que mapeiam os bits gerados diretamente para a mantissa do formato IEEE 754.
-
-### Como funciona
- O método realiza um *bit shift* para descartar bits de baixa entropia ou que excedam a precisão do formato, e então multiplica por um fator de normalização ($2^{-53}$ para double ou $2^{-24}$ para float).
-
-### Exemplos
-
- **1. Gerando `double` [0, 1)**
- Ideal para alta precisão. Utiliza o gerador de 64 bits (ou 128+).
- ```c
- // Usa os 53 bits mais significativos de um uint64_t
- // Equivale a: (x >> 11) * 0x1.0p-53
- double val_f64 = TO_DBL_01(rand128_next(&rand128));
- ```
-
- **2. Gerando `float` [0, 1)**
- Ideal para aplicações gráficas (OpenGL/DirectX) ou economia de memória. Pode usar o gerador de 32 bits.
-
- ```c
- // Usa os 24 bits mais significativos de um uint32_t
- // Equivale a: (x >> 8) * 0x1.0p-24f
- float val_f32 = TO_FLT_01(rand32_next(&rand32));
- ```
+## ⚖️ Licença
+ Este projeto é de domínio público ou licenciado sob MIT (sinta-se livre para usar como quiser).
