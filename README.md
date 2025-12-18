@@ -1,5 +1,5 @@
 # Frigo's Standard Library in C (stdfrigo)
- **stdfrigo** é uma coleção de bibliotecas *header-only* em C (C99) focadas em **alta performance**, **simplicidade** e **zero dependências**.
+ **stdfrigo** é uma coleção de bibliotecas em C (C99) focadas em **alta performance**, **simplicidade** e **zero dependências**. Projetada sob a filosofia **NeoLibC**, a suíte oferece algoritmos fundamentais com interfaces polimórficas (C11/C++) para máxima ergonomia e desempenho.
 
  O objetivo deste projeto é fornecer implementações de algoritmos fundamentais (geração de números aleatórios, hashing, matemática) que sejam fáceis de integrar em qualquer projeto, sem a complexidade de sistemas de build pesados ou bibliotecas externas.
 
@@ -9,34 +9,36 @@
  Atualmente, a biblioteca é composta pelos seguintes módulos:
 
 ### 1. `stdrand.h` (Random)
- Geradores de números pseudoaleatórios (PRNG) baseados na família **XORShift** e acesso a geradores de hardware (RDRAND/RDSEED).
- * **Algoritmos:** XORShift32, XORShift64, XORShift128+.
- * **Hardware:** Suporte nativo a instruções Intel/AMD (`_rdrand`, `_rdseed`) para entropia pura.
- * **API:** Inicialização segura (Zero-Safe) e construtores ergonômicos.
- * [📖 Ler Documentação Completa (STDRAND.md)](docs/STDRAND.md)
+ Geradores de números pseudoaleatórios (PRNG) baseados na família **xoshiro/xoroshiro**, o estado da arte em qualidade estatística e velocidade.
+ * **Algoritmos:** xoshiro128**, xoshiro256**, xoshiro128+ e xoroshiro128+.
+ * **Hardware:** Suporte seguro a `RDRAND` e `RDSEED` com proteção via `CPUID`.
+ * **API:** Inicialização via `SplitMix64`, funções de salto (*jump*) para paralelismo e suporte a limites (*bounds*) sem viés.
+ * [📖 STDRAND.md](docs/STDRAND.md)
 
 ### 2. `stdhash.h` (Hashing)
- Algoritmos de hash não-criptográficos otimizados para velocidade e distribuição uniforme (Avalanche Effect).
- * **Algoritmos:** MurmurHash3 Finalizer, Jenkins One-at-a-Time, FNV-1a.
- * **Hardware:** Aceleração via instruções **SSE4.2** (CRC32-C) para hashear grandes buffers instantaneamente.
- * **Funcionalidades:** Hashing de inteiros O(1), buffers e combinação de hashes.
- * [📖 Ler Documentação Completa (STDHASH.md)](docs/STDHASH.md)
+ Algoritmos de hash não-criptográficos otimizados para velocidade e dispersão uniforme (Efeito Avalanche).
+ * **Algoritmos:** **WyHash** (Software) para hashing de buffers e mixers estatísticos de O(1) para inteiros.
+ * **Hardware:** Aceleração via instruções **SSE4.2** (CRC32-C Castagnoli) com processamento em múltiplos fluxos paralelos.
+ * **Funcionalidades:** API polimórfica que seleciona o algoritmo com base no tipo da variável de saída (32 ou 64 bits).
+ * [📖 STDHASH.md](docs/STDHASH.md)
 
 ### 3. `stdconst.h` (Constants)
- Constantes matemáticas fundamentais pré-calculadas com precisão máxima para IEEE 754.
- * **Matemática:** PI, Tau, Raízes Quadradas (Primos), Proporção Áurea (Phi).
- * **Otimização:** Versões "Inversas" ($1/x$) para substituir divisões lentas por multiplicações.
- * **Bitmasks:** Primos de Mersenne para máscaras de bits rápidas.
- * [📖 Ler Documentação Completa (STDCONST.md)](docs/STDCONST.md)
+ Constantes matemáticas fundamentais pré-calculadas com precisão máxima para o padrão IEEE 754.
+ * **Matemática:** PI, Tau, Raízes Quadradas e Proporção Áurea (ϕ⁻¹).
+ * **Otimização:** Versões inversas (1/x) para substituir divisões lentas por multiplicações rápidas.
+ * **Bitmasks:** Primos de Mersenne para máscaras de bits eficientes.
+ * [📖 STDCONST.md](docs/STDCONST.md)
 
 ---
 
-## 🚀 Instalação
- Como as bibliotecas são *header-only*, você pode simplesmente copiar os arquivos `.h` para o seu projeto. No entanto, para instalar no sistema (padrão `/usr/local/include`), utilize o `Makefile` incluído.
+## 🚀 Instalação e Integração
+ A suíte foi desenhada para suportar compilação em unidades de tradução separadas conforme o projeto cresce.
+
+ Para instalar globalmente (padrão `/usr/local/include`), utilize o `Makefile`:
 
  O sistema de instalação detecta automaticamente o ambiente (Linux/macOS ou MSYS2/Windows) para ajustar as permissões.
  ```bash
- # Instalar (copia todos os .h para o diretório de include do sistema)
+ # Instalar
  make install
 
  # Verificar se tudo foi instalado corretamente
@@ -57,6 +59,10 @@
  export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
  export CPLUS_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
  export LIBRARY_PATH="$(cygpath -m /usr/local/lib)"
+ export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig"
+ fcc() {
+     gcc "$@" $(pkg-config --cflags --libs stdfrigo)
+ }
  ```
 
  *Após adicionar, reinicie o terminal ou rode `source ~/.bashrc` ou  `source ~/.zshrc`.*
@@ -74,14 +80,14 @@
  "C_INCLUDE_PATH"="C:\\msys64\\usr\\local\\include"
  "CPLUS_INCLUDE_PATH"="C:\\msys64\\usr\\local\\include"
  "LIBRARY_PATH"="C:\\msys64\\usr\\local\\lib"
+ "PKG_CONFIG_PATH"="C:\\msys64\\usr\\local\\lib\\pkgconfig"
  ```
 
 ---
 
 ## ⚡ Exemplo de Uso
- Após a instalação, basta incluir os headers desejados diretamente no seu código.
+ A API unificada permite integrar hardware, software e matemática de forma transparente:
 
- Este exemplo demonstra a integração dos três módulos: geração de sementes via hardware, hashing de IDs e uso de constantes matemáticas para otimização.
  ```c
  #include <stdio.h>
  #include <stdrand.h>
@@ -89,30 +95,22 @@
  #include <stdconst.h>
 
  int main() {
-     // 1. Inicializando o PRNG com entropia de hardware (Best Effort)
-     // Usa RDSEED se disponível, caindo para RDTSC se necessário.
-     rand64_t rng = rand64_init(rand64_hw_seed());
+     // 1. Inicialização com hardware entropy (Best Effort)
+     rand64_t rng = rand64_init(rand64_hw_seed()); //
 
-     // 2. Gerando um ID aleatório
-     uint64_t random_id = rand64_next(&rng);
+     // 2. Geração e Hashing Polimórfico
+     uint64_t random_val = rand_next(&rng); //
+     uint64_t hash_res;
+     hash_fast(&random_val, sizeof(random_val), &hash_res); //
 
-     // 3. Calculando o hash desse ID (Transformando em índice de tabela)
-     uint64_t index = hash64_u64(random_id);
+     // 3. Otimização com Constantes
+     // Multiplicação por inverso é mais rápido que divisão por raiz
+     double res = (double)hash_res * INV_SQRT2_64; 
 
-     // 4. Exemplo de Otimização Matemática
-     // Em vez de: double val = (double)random_id / SQRT2_64;
-     // Usamos multiplicação pelo inverso pré-calculado (mais rápido):
-     double val = (double)random_id * INV_SQRT2_64;
-
-     // 5. Output
-     printf("ID Gerado : %llu\n", random_id);
-     printf("Hash Index: %llu\n", index);
-     printf("Calculo   : %.5f\n", val);
-     printf("Mersenne13: %u (Mask: 0x%X)\n", MERSENNE_13, MERSENNE_13);
-
+     printf("Random: %llu | Hash: %llu | Calc: %.5f\n", random_val, hash_res, res);
      return 0;
  }
  ```
 
 ## ⚖️ Licença
- Este projeto é de domínio público ou licenciado sob MIT (sinta-se livre para usar como quiser).
+ Este projeto é de domínio público ou licenciado sob MIT. Sinta-se livre para integrar em projetos comerciais ou privados.

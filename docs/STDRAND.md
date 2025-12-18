@@ -1,154 +1,134 @@
 # Frigo's Standard Random Library in C (stdrand)
- Uma biblioteca *header-only* em C de alto desempenho para geração de números pseudoaleatórios (PRNG). Esta biblioteca implementa a família de algoritmos **XORShift**, conhecidos por sua velocidade extrema e implementação compacta.
+ Parte da suíte **stdfrigo**. Uma biblioteca de alto desempenho para geração de números pseudoaleatórios (PRNG), implementando os algoritmos da família **xoshiro/xoroshiro**, atualmente considerados o estado da arte em velocidade e qualidade estatística.
 
  **Destaques:**
 
- * **API Moderna (Construtores):** Inicialização via retorno de estrutura (`_init`), evitando erros com variáveis não inicializadas.
- * **Zero-Safe:** Utiliza internamente o algoritmo `SplitMix64` para inicialização, garantindo que o estado interno nunca fique zerado ou inválido, mesmo com seeds simples.
- * **Portátil:** Escrita em C99 padrão (`<stdint.h>`, `<stdbool.h>`).
- * **Sem Dependências:** Basta copiar `stdrand.h` para o seu projeto.
+ * **Algoritmos Modernos:** Implementa **xoshiro** (XOR/Shift/Rotate), superiores em qualidade e performance aos antigos Mersenne Twister ou XORShift simples.
+ * **Polimorfismo (C11):** Macros `_Generic` permitem usar uma API unificada (`rand_next`, `rand_jump`) para qualquer tipo de gerador.
+ * **Zero-Safe:** Inicialização interna via `SplitMix64`, garantindo que o estado nunca seja inválido, mesmo com seeds simples.
+ * **Hardware:** Suporte seguro e automático a `RDRAND`/`RDSEED` em CPUs x86-64.
 
 ---
 
-## Random 32 bits
- Implementação do algoritmo **XORShift32**. Ideal para sistemas embarcados com pouca memória ou processadores de 32 bits onde a velocidade é crítica e o período curto não é um problema.
+## Geradores Disponíveis
 
- * **Algoritmo:** XORShift32 (Marsaglia)
- * **Período:** 2³² − 1
- * **Estado:** 4 bytes (`uint32_t`)
+### 1. Random 32 bits (`rand32_t`)
+ Implementação do **xoshiro128****.
 
-### API
- ```c
- // 1. Inicialização (Style: Construtor)
- // Retorna uma struct pronta para uso.
- rand32_t rng = rand32_init(12345U);
+ É o gerador de 32 bits de propósito geral mais rápido e robusto disponível. Passa em todos os testes estatísticos (BigCrush).
 
- // 2. Geração
- uint32_t num = rand32_next(&rng);
+ * **Algoritmo:** xoshiro128**
+ * **Saída:** 32 bits (`uint32_t`)
+ * **Estado:** 128 bits (4x `uint32_t`)
 
-```
+### 2. Random 64 bits (`rand64_t`)
+ Implementação do **xoshiro256****.
+ 
+ O "cavalo de batalha" da biblioteca. Recomendado para a grande maioria das aplicações, simulações e jogos. Possui um período massivo e passa em todos os testes estatísticos.
+
+ * **Algoritmo:** xoshiro256**
+ * **Saída:** 64 bits (`uint64_t`)
+ * **Estado:** 256 bits (4x `uint64_t`)
+
+### 3. Random Float (`rand_float_t`)
+ Implementação do **xoshiro128+** (Plus).
+ 
+ Variante otimizada para velocidade e geração de ponto flutuante. Retorna valores normalizados no intervalo **[0, 1)**.
+
+ * **Algoritmo:** xoshiro128+
+ * **Saída:** 32 bits (`float`)
+ * **Estado:** 128 bits (4x `uint32_t`)
+
+### 4. Random Double (`rand_double_t`)
+ Implementação do **xoroshiro128+** (Plus).
+
+ Variante leve de 64 bits otimizada para gerar números de dupla precisão normalizados no intervalo **[0, 1)**.
+
+ * **Algoritmo:** xoroshiro128+
+ * **Saída:** 64 bits (`double`)
+ * **Estado:** 128 bits (2x `uint64_t`)
 
 ---
 
-## Random 64 bits
- Implementação do algoritmo **XORShift64**. É o padrão equilibrado para uso geral. Oferece um período longo o suficiente para a maioria das aplicações (jogos, embaralhamento de listas) com performance máxima em CPUs modernas de 64 bits.
+## API Unificada (C11 Generic)
+ Se o seu compilador suportar C11, você pode usar as macros genéricas abaixo para manipular qualquer um dos geradores (`rand32`, `rand64`, `rand_float` ou `rand_double`) de forma transparente.
 
- * **Algoritmo:** XORShift64 (Marsaglia)
- * **Período:** 2⁶⁴ − 1
- * **Estado:** 8 bytes (`uint64_t`)
-
-### API
  ```c
- // 1. Inicialização
- rand64_t rng = rand64_init(99999ULL);
+ // 1. Inicialização (Construtor)
+ rand64_t rng = rand64_init(12345ULL);
+ rand_float_t rng_f = rand_float_init(12345ULL);
 
- // 2. Geração
- uint64_t num = rand64_next(&rng);
+ // 2. Geração Básica
+ uint64_t val = rand_next(&rng);
+ float val_f = rand_next(&rng_f); // Retorna [0.0, 1.0)
+
+ // 3. Reinicialização (Re-seed)
+ // Reinicia o estado do gerador com uma nova semente.
+ // Equivalente a chamar 'randX_init' novamente na mesma variável.
+ rand_seed(&rng, nova_seed);
+
+ // 4. Limites e Intervalos (Polimorfismo Total)
+ // Inteiros
+ uint64_t d100 = rand_bound(&rng, 100);
+ uint64_t range = rand_range(&rng, 10, 20);
+
+ // Floats (Funciona igual!)
+ float f_bound = rand_bound(&rng_f, 100.0f);
+ float f_range = rand_range(&rng_f, 10.5f, 20.0f);
+ ```
+
+### Funções de Salto (Jump Ahead)
+ Útil para paralelismo. A função `rand_jump` avança o estado do gerador o equivalente a **2⁶⁴ chamadas** (ou 2⁹⁶ dependendo do algoritmo) em tempo constante. Isso permite garantir que threads diferentes operem em sub-sequências não sobrepostas.
+
+ ```c
+ // Na Thread A: usa rng original
+
+ // Na Thread B:
+ rand64_t rng_B = rng_A; // Copia estado
+ rand_jump(&rng_B);      // Avança bilhões de passos
+ // Agora rng_B pode ser usado sem colidir com rng_A
  ```
 
 ---
 
-## Random 128 bits
- Implementação do algoritmo **XORShift128+ (Plus)**. Esta variante adiciona uma soma não-linear (`+`) na saída, melhorando drasticamente a qualidade estatística e passando em testes rigorosos como o BigCrush.
+## Geração de Ponto Flutuante
+ Diferente das bibliotecas padrão que exigem casts manuais e divisões lentas, a **stdrand** fornece tipos dedicados (`rand_float` e `rand_double`) que geram valores normalizados IEEE 754 diretamente.
 
- Recomendado para simulações científicas ou quando se necessita de uma qualidade superior de aleatoriedade (especialmente para gerar `double` no intervalo [0, 1)).
+ * **`rand_float_t`**: Preenche os 24 bits da mantissa de um `float`.
+ * **`rand_double_t`**: Preenche os 53 bits da mantissa de um `double`.
 
- * **Algoritmo:** XORShift128+ (Vigna)
- * **Período:** 2¹²⁸ - 1
- * **Estado:** 16 bytes (`uint64_t[2]`)
- * **Saída:** Retorna 64 bits por chamada.
-
-### API
  ```c
- // 1. Inicialização
- // O SplitMix expande a seed única para preencher os 128 bits de estado
- rand128_t rng = rand128_init(123456789ULL);
+ rand_double_t rng = rand_double_init(seed);
 
- // 2. Geração
- uint64_t num = rand128_next(&rng);
- ```
-
----
-
-## Conversão para Ponto Flutuante
- Para utilizar os geradores em simulações que requerem números reais no intervalo `[0, 1)`, a biblioteca fornece macros otimizadas que mapeiam os bits gerados diretamente para a mantissa do formato IEEE 754.
-
-### Como funciona
- O método realiza um *bit shift* para descartar bits de baixa entropia ou que excedam a precisão do formato, e então multiplica por um fator de normalização (2^{-53} para double ou 2^{-24} para float).
-
-### Exemplos
- **1. Gerando `double` [0, 1)**
-
- Ideal para alta precisão. Utiliza o gerador de 64 bits (ou 128+).
- ```c
- // Usa os 53 bits mais significativos de um uint64_t
- // Equivale a: (x >> 11) * 0x1.0p-53
- double val_f64 = TO_DBL_01(rand128_next(&rand128));
- ```
-
- **2. Gerando `float` [0, 1)**
-
- Ideal para aplicações gráficas (OpenGL/DirectX) ou economia de memória. Pode usar o gerador de 32 bits.
- ```c
- // Usa os 24 bits mais significativos de um uint32_t
- // Equivale a: (x >> 8) * 0x1.0p-24f
- float val_f32 = TO_FLT_01(rand32_next(&rand32));
+ // Gera double de alta qualidade [0, 1) sem divisões
+ double x = rand_next(&rng);
  ```
 
 ---
 
 ## Hardware Random (x86-64)
- Para processadores modernos (Intel Ivy Bridge+ ou AMD Zen+), a biblioteca oferece acesso direto aos geradores de hardware (DRNG).
+ Acesso às instruções de entropia da Intel/AMD (`RDRAND`/`RDSEED`). As funções possuem proteções internas (`CPUID`) para evitar *crashes* em CPUs antigas que não suportam estas instruções.
 
- **Nota de Portabilidade:** Estas funções são protegidas por guardas de pré-processador (`#if defined(__x86_64__)`). Em arquiteturas não suportadas (como ARM ou 32-bit), elas simplesmente não são compiladas. Recomendamos verificar a arquitetura antes de chamá-las ou usar macros de detecção.
-
-### Destaques
- * **Zero Config:** Utiliza `__attribute__((target))` (em GCC/Clang) para habilitar as instruções `RDRAND/RDSEED` apenas no escopo destas funções.
- * **Hierarquia Clara:** Funções divididas por propósito (`_fast` para velocidade, `_entropy` para qualidade, `_seed` para conveniência).
-
----
-
-### 1. Pseudo-Aleatório Rápido (RDRAND)
- Acessa o **CSPRNG** embutido no hardware.
-
- * **Sufixo:** `_fast`
- * **Características:** Extremamente rápido, estatisticamente sólido.
- * **Retorno:** `true` (sucesso) ou `false` (falha de hardware).
+### 1. Pseudo-Aleatório Rápido (`_fast`)
+ Usa `RDRAND` (AES-CTR em hardware). Muito rápido, ideal para preencher buffers ou seeds rápidas.
 
  ```c
  uint64_t val;
- if (rand64_hw_fast(&val)) {
-     // Uso direto do valor
- }
+ if (rand64_hw_fast(&val)) { /* Sucesso */ }
  ```
 
-### 2. Entropia Pura (RDSEED)
- Obtém entropia diretamente do ruído térmico do circuito.
-
- * **Sufixo:** `_entropy`
- * **Características:** Mais lento, sujeito a esgotamento (underflow).
- * **Uso:** Sementes criptográficas.
+### 2. Entropia Pura (`_entropy`)
+ Usa `RDSEED` (Ruído térmico). Mais lento, mas criptograficamente seguro e não determinístico.
 
  ```c
  uint64_t seed;
- if (rand64_hw_entropy(&seed)) {
-     // Temos uma semente verdadeira
- }
+ if (rand64_hw_entropy(&seed)) { /* Sucesso */ }
  ```
 
-### 3. Auto Seed (Wrapper Inteligente)
- A função recomendada para inicializar os geradores de software. Ela implementa uma estratégia de "Melhor Esforço" (Best Effort) para garantir que você sempre tenha uma semente válida.
-
- **Estratégia de Fallback:**
-
- 1. Tenta Entropia Pura (`RDSEED`).
- 2. Se falhar, tenta Pseudo-Hardware (`RDRAND`).
- 3. Se falhar, usa Ciclos da CPU (`RDTSC`) misturados via SplitMix.
+### 3. Auto Seed (`_seed`)
+ A melhor maneira de inicializar seus geradores. Tenta obter entropia pura; se falhar, tenta pseudo-hardware; se falhar, usa o contador de ciclos da CPU (`RDTSC`) misturado com um hash robusto.
 
  ```c
- // Inicializa o gerador de 64 bits com a melhor seed disponível no sistema
+ // Inicialização "Best Effort"
  rand64_t rng = rand64_init(rand64_hw_seed());
-
- // Inicializa o gerador de 128 bits
- rand128_t rng128 = rand128_init(rand64_hw_seed());
  ```
