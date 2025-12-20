@@ -162,12 +162,12 @@
 
  int main() {
      // 1. Inicialização com hardware entropy (Best Effort)
-     rand64_t rng = rand64_init(rand64_hw_seed()); //
+     rand64_t rng = rand64_init(rand64_hw_seed());
 
      // 2. Geração e Hashing Polimórfico
-     uint64_t random_val = rand_next(&rng); //
+     uint64_t random_val = rand_next(&rng);
      uint64_t hash_res;
-     hash_fast(&random_val, sizeof(random_val), &hash_res); //
+     hash_fast(&random_val, sizeof(random_val), &hash_res);
 
      // 3. Otimização com Constantes
      // Multiplicação por inverso é mais rápido que divisão por raiz
