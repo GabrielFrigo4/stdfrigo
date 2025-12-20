@@ -8,6 +8,14 @@
 ## 📚 Módulos Disponíveis
  Atualmente, a biblioteca é composta pelos seguintes módulos:
 
+### 0. `stdfrigo.h` (Core & Umbrella)
+ O cabeçalho central da suíte. Atua como um **ponto único de inclusão** ("Umbrella Header") para facilitar o uso da biblioteca completa e gerenciar definições compartilhadas entre os módulos.
+
+ * **Inclusão Unificada:** Inclui automaticamente `stdrand.h`, `stdhash.h` e `stdconst.h`, permitindo acesso a toda a API com um único `#include`.
+ * **Definições Base:** Centraliza macros de detecção de plataforma (Linux/Windows), atributos de compilador e suporte a linkagem automática no MSVC.
+ * **Versionamento:** Define a versão semântica da biblioteca e flags globais de configuração para controle de compatibilidade.
+ * [📖 STDFRIGO.md](docs/STDFRIGO.md)
+
 ### 1. `stdrand.h` (Random)
  Geradores de números pseudoaleatórios (PRNG) baseados na família **xoshiro/xoroshiro**, o estado da arte em qualidade estatística e velocidade.
  * **Algoritmos:** xoshiro128**, xoshiro256**, xoshiro128+ e xoroshiro128+.

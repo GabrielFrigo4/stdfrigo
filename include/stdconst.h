@@ -1,6 +1,8 @@
 #ifndef STDCONST_H
 #define STDCONST_H
 
+#include <stdfrigo_defs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,8 +19,17 @@ extern "C" {
 #define TAU_32 6.28318530F
 #define TAU_64 6.28318530717958647692
 
-#define INV_PI_32 0.31830988F
-#define INV_PI_64 0.31830988618379067153
+/* ===============================================================
+ * INVERSO DAS CONSTANTES CIRCULARES (1/PI & 1/TAU)
+ * ===============================================================
+ * Uso: Trigonometria, Rotações, Física.
+ * =============================================================== */
+
+#define PI_INV_32 0.31830988F
+#define PI_INV_64 0.31830988618379067153
+
+#define TAU_INV_32 0.15915494F
+#define TAU_INV_64 0.15915494309189533576
 
 /* ===============================================================
  * CONVERSÃO DE ÂNGULOS (RADIANOS <-> GRAUS)
@@ -59,29 +70,29 @@ extern "C" {
 #define SQRT13_64 3.6055512754639892931
 
 /* ===============================================================
- * INVERSO DA RAIZ QUADRADA (1 / sqrt(x))
+ * INVERSO DAS RAÍZES QUADRADAS (1/sqrt(x))
  * ===============================================================
  * Uso: Otimização. Multiplicar pelo inverso é mais rápido que dividir.
  * Exemplo: vec * INV_SQRT2 em vez de vec / SQRT2.
  * =============================================================== */
 
-#define INV_SQRT2_32 0.70710678F
-#define INV_SQRT2_64 0.7071067811865475244
+#define SQRT2_INV_32 0.70710678F
+#define SQRT2_INV_64 0.7071067811865475244
 
-#define INV_SQRT3_32 0.57735027F
-#define INV_SQRT3_64 0.5773502691896257645
+#define SQRT3_INV_32 0.57735027F
+#define SQRT3_INV_64 0.5773502691896257645
 
-#define INV_SQRT5_32 0.44721360F
-#define INV_SQRT5_64 0.4472135954999579393
+#define SQRT5_INV_32 0.44721360F
+#define SQRT5_INV_64 0.4472135954999579393
 
-#define INV_SQRT7_32 0.37796447F
-#define INV_SQRT7_64 0.3779644730092272272
+#define SQRT7_INV_32 0.37796447F
+#define SQRT7_INV_64 0.3779644730092272272
 
-#define INV_SQRT11_32 0.30151134F
-#define INV_SQRT11_64 0.3015113445777636226
+#define SQRT11_INV_32 0.30151134F
+#define SQRT11_INV_64 0.3015113445777636226
 
-#define INV_SQRT13_32 0.27735010F
-#define INV_SQRT13_64 0.2773500981126145610
+#define SQRT13_INV_32 0.27735010F
+#define SQRT13_INV_64 0.2773500981126145610
 
 /* ===============================================================
  * NÚMEROS PRIMOS DE MERSENNE (2^n - 1)
@@ -102,12 +113,24 @@ extern "C" {
 /* ===============================================================
  * CONSTANTES MATEMÁTICAS (GOLDEN RATIO / PHI)
  * ===============================================================
- * Uso: Hashing (dispersão de bits), Fibonacci, Geometria.
- * Valor: (sqrt(5) - 1) / 2 * 2^Width
+ * 1. PHI (Math):     (1 + sqrt(5)) / 2     ~ 1.618
+ * Uso: Geometria, Fibonacci, Física.
+ *
+ * 2. PHI_INV (Math): (sqrt(5) - 1) / 2     ~ 0.618
+ * Uso: Otimização de divisões e proporções inversas.
+ *
+ * 3. HASH (Int/Hex): PHI_INV * 2^Width
+ * Uso: Dispersão de bits (Multiplicative Hashing).
  * =============================================================== */
 
-#define PHI_INV_32 0x9e3779b9U
-#define PHI_INV_64 0x9e3779b97f4a7c15ULL
+#define PHI_32 1.61803399F
+#define PHI_64 1.61803398874989484820
+
+#define PHI_INV_32 0.61803399F
+#define PHI_INV_64 0.61803398874989484820
+
+#define PHI_INV_HASH_32 0x9e3779b9U
+#define PHI_INV_HASH_64 0x9e3779b97f4a7c15ULL
 
 #ifdef __cplusplus
 }

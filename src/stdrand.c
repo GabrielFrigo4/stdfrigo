@@ -39,7 +39,7 @@
  * =============================================================== */
 
 static inline uint64_t _stdrand_splitmix64_next_(uint64_t *state) {
-    *state += PHI_INV_64;
+    *state += PHI_INV_HASH_64;
     return hash64_int(*state);
 }
 
@@ -96,7 +96,7 @@ rand32_t rand32_init(uint64_t seed) {
     rng.s[2] = (uint32_t)z2;
     rng.s[3] = (uint32_t)(z2 >> 32);
     if ((rng.s[0] | rng.s[1] | rng.s[2] | rng.s[3]) == 0) {
-        rng.s[0] = PHI_INV_32;
+        rng.s[0] = PHI_INV_HASH_32;
     }
     return rng;
 }
@@ -127,7 +127,7 @@ rand64_t rand64_init(uint64_t seed) {
     rng.s[2] = _stdrand_splitmix64_next_(&seed);
     rng.s[3] = _stdrand_splitmix64_next_(&seed);
     if ((rng.s[0] | rng.s[1] | rng.s[2] | rng.s[3]) == 0) {
-        rng.s[0] = PHI_INV_64;
+        rng.s[0] = PHI_INV_HASH_64;
     }
     return rng;
 }
@@ -159,7 +159,7 @@ rand_float_t rand_float_init(uint64_t seed) {
     rng.s[2] = (uint32_t)z2;
     rng.s[3] = (uint32_t)(z2 >> 32);
     if ((rng.s[0] | rng.s[1] | rng.s[2] | rng.s[3]) == 0) {
-        rng.s[0] = PHI_INV_32;
+        rng.s[0] = PHI_INV_HASH_32;
     }
     return rng;
 }
@@ -187,7 +187,7 @@ rand_double_t rand_double_init(uint64_t seed) {
     rng.s[0] = _stdrand_splitmix64_next_(&seed);
     rng.s[1] = _stdrand_splitmix64_next_(&seed);
     if ((rng.s[0] | rng.s[1]) == 0) {
-        rng.s[0] = PHI_INV_64;
+        rng.s[0] = PHI_INV_HASH_64;
     }
     return rng;
 }

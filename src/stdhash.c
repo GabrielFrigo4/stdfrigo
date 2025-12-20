@@ -69,32 +69,32 @@ static inline uint64_t _stdhash_read_small_(const uint8_t *p, size_t k) {
  * 64-bit: "Stafford Mix 13".
  * =============================================================== */
 
-uint32_t hash32_int(uint32_t k) {
+uint32_t hash32_int(uint32_t num) {
     const uint32_t c1 = 0x7feb352dU;
     const uint32_t c2 = 0x846ca68bU;
 
-    k ^= k >> 16;
-    k *= c1;
-    k ^= k >> 15;
-    k *= c2;
-    k ^= k >> 16;
-    return k;
+    num ^= num >> 16;
+    num *= c1;
+    num ^= num >> 15;
+    num *= c2;
+    num ^= num >> 16;
+    return num;
 }
 
-uint64_t hash64_int(uint64_t k) {
+uint64_t hash64_int(uint64_t num) {
     const uint64_t c1 = 0xbf58476d1ce4e5b9ULL;
     const uint64_t c2 = 0x94d049bb133111ebULL;
 
-    k ^= k >> 30;
-    k *= c1;
-    k ^= k >> 27;
-    k *= c2;
-    k ^= k >> 31;
-    return k;
+    num ^= num >> 30;
+    num *= c1;
+    num ^= num >> 27;
+    num *= c2;
+    num ^= num >> 31;
+    return num;
 }
 
 /* ===============================================================
- * FAST HASH (WyHash Variant)
+ * MEMORY HASH (WyHash Variant)
  * ===============================================================
  * O novo "Padrão Ouro" para hashing de software.
  * Substitui FNV-1a e Jenkins.
@@ -102,9 +102,9 @@ uint64_t hash64_int(uint64_t k) {
  * Extremamente rápido e passa no SMHasher.
  * =============================================================== */
 
-uint64_t hash64_fast(const void *buff, size_t len) {
-    const uint8_t *p = (const uint8_t *)buff;
-    uint64_t seed = PHI_INV_64 ^ len;
+uint64_t hash64_mem(const void *mem, size_t size) {
+    const uint8_t *p = (const uint8_t *)mem;
+    uint64_t seed = PHI_INV_HASH_64 ^ size;
     uint64_t see1 = seed;
     uint64_t high;
     uint64_t low;
@@ -115,7 +115,7 @@ uint64_t hash64_fast(const void *buff, size_t len) {
     const uint64_t _wyp3 = 0x589965cc75374cc3ULL;
     const uint64_t _wyp4 = 0x1d8e4e27c47d124fULL;
 
-    while (len >= 16) {
+    while (size >= 16) {
         uint64_t v1 = _stdhash_read64_(p);
         uint64_t v2 = _stdhash_read64_(p + 8);
 
@@ -126,20 +126,20 @@ uint64_t hash64_fast(const void *buff, size_t len) {
         see1 = low ^ high;
 
         p += 16;
-        len -= 16;
+        size -= 16;
     }
 
-    if (len >= 8) {
+    if (size >= 8) {
         uint64_t v1 = _stdhash_read64_(p);
-        uint64_t v2 = _stdhash_read64_(p + len - 8);
+        uint64_t v2 = _stdhash_read64_(p + size - 8);
 
         low = _stdhash_mul128_(seed ^ v1 ^ _wyp0, _wyp1, &high);
         seed = low ^ high;
 
         low = _stdhash_mul128_(see1 ^ v2 ^ _wyp2, _wyp3, &high);
         see1 = low ^ high;
-    } else if (len > 0) {
-        uint64_t v1 = _stdhash_read_small_(p, len);
+    } else if (size > 0) {
+        uint64_t v1 = _stdhash_read_small_(p, size);
         low = _stdhash_mul128_(seed ^ v1 ^ _wyp0, _wyp1, &high);
         seed = low ^ high;
     }
@@ -154,8 +154,8 @@ uint64_t hash64_fast(const void *buff, size_t len) {
     return low ^ high;
 }
 
-uint32_t hash32_fast(const void *buff, size_t len) {
-    return (uint32_t)hash64_fast(buff, len);
+uint32_t hash32_mem(const void *mem, size_t size) {
+    return (uint32_t)hash64_mem(mem, size);
 }
 
 /* ===============================================================
@@ -165,11 +165,11 @@ uint32_t hash32_fast(const void *buff, size_t len) {
  * =============================================================== */
 
 uint32_t hash32_combine(uint32_t seed, uint32_t next_hash) {
-    return seed ^ (next_hash + PHI_INV_32 + (seed << 6) + (seed >> 2));
+    return seed ^ (next_hash + PHI_INV_HASH_32 + (seed << 6) + (seed >> 2));
 }
 
 uint64_t hash64_combine(uint64_t seed, uint64_t next_hash) {
-    return seed ^ (next_hash + PHI_INV_64 + (seed << 6) + (seed >> 2));
+    return seed ^ (next_hash + PHI_INV_HASH_64 + (seed << 6) + (seed >> 2));
 }
 
 /* ===============================================================
@@ -230,14 +230,14 @@ static bool _stdhash_has_sse42_(void) {
  * =============================================================== */
 
 _STDHASH_ATTR_SSE42_
-bool hash32_hw(const void *buff, size_t len, uint32_t *out) {
+bool hash32_hw(const void *mem, size_t size, uint32_t *out) {
     if (!_stdhash_has_sse42_()) {
         return false;
     }
 
-    const uint8_t *tail = (const uint8_t *)buff;
-    const uint8_t *end_64 = tail + (len & ~7);
-    uint32_t hash = PHI_INV_32;
+    const uint8_t *tail = (const uint8_t *)mem;
+    const uint8_t *end_64 = tail + (size & ~7);
+    uint32_t hash = PHI_INV_HASH_32;
 
     while (tail < end_64) {
         uint64_t k;
@@ -246,7 +246,7 @@ bool hash32_hw(const void *buff, size_t len, uint32_t *out) {
         tail += sizeof(uint64_t);
     }
 
-    size_t remaining = len & 7;
+    size_t remaining = size & 7;
     while (remaining > 0) {
         if (remaining >= 4) {
             uint32_t k;
@@ -271,16 +271,16 @@ bool hash32_hw(const void *buff, size_t len, uint32_t *out) {
 }
 
 _STDHASH_ATTR_SSE42_
-bool hash64_hw(const void *buff, size_t len, uint64_t *out) {
+bool hash64_hw(const void *mem, size_t size, uint64_t *out) {
     if (!_stdhash_has_sse42_()) {
         return false;
     }
 
-    const uint8_t *tail = (const uint8_t *)buff;
-    const uint8_t *end_64 = tail + (len & ~7);
+    const uint8_t *tail = (const uint8_t *)mem;
+    const uint8_t *end_64 = tail + (size & ~7);
 
-    uint64_t h1 = (uint32_t)(PHI_INV_64 >> 32);
-    uint64_t h2 = (uint32_t)PHI_INV_64;
+    uint64_t h1 = (uint32_t)(PHI_INV_HASH_64 >> 32);
+    uint64_t h2 = (uint32_t)PHI_INV_HASH_64;
 
     while (tail < end_64) {
         uint64_t k;
@@ -290,7 +290,7 @@ bool hash64_hw(const void *buff, size_t len, uint64_t *out) {
         tail += sizeof(uint64_t);
     }
 
-    size_t remaining = len & 7;
+    size_t remaining = size & 7;
     while (remaining > 0) {
         uint8_t k = *tail++;
         h1 = _mm_crc32_u8((uint32_t)h1, k);

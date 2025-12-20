@@ -18,7 +18,7 @@
  * **32 bits:** Baseado no "lowbias32" (Chris Wellons).
  * **64 bits:** Baseado no "Stafford Mix 13" (usado no SplitMix64).
 
-### 2. Fast Software Hash (`hash_fast`)
+### 2. Memory Software Hash (`hash_mem`)
  Implementação do **WyHash**. É o algoritmo de software mais rápido da atualidade que mantém integridade estatística total.
 
  * **Algoritmo:** WyHash (Variante 128-bit mix).
@@ -43,7 +43,8 @@
  // 2. Hashing de Buffers (Software)
  // Exige 3 argumentos: buffer, tamanho e ponteiro de saída.
  uint64_t resultado;
- hash_fast(meu_buffer, len, &resultado);
+ const char *dados = "Exemplo";
+ hash_mem(dados, strlen(dados), &resultado);
 
  // 3. Combinação de Hashes (Composição de Chaves)
  // Útil para criar chaves compostas (ex: Coordenada X + Y)
@@ -60,12 +61,13 @@
  Diferente das versões em software, as funções de hardware retornam um `bool` para indicar se a operação foi possível na CPU atual.
 
  ```c
- uint64_t out;
- if (hash_hw(meu_buffer, len, &out)) {
+ uint64_t resultado;
+ const char *dados = "Exemplo";
+ if (hash_hw(dados, strlen(dados), &resultado)) {
      // Sucesso: Processado via Hardware (SSE4.2)
  } else {
      // Fallback: CPU antiga, use a versão de software
-     hash_fast(meu_buffer, len, &out);
+     hash_mem(dados, strlen(dados), &resultado);
  }
  ```
 

@@ -1,18 +1,24 @@
-PREFIX     ?= /usr/local
-LIBDIR     ?= $(PREFIX)/lib
-INCLUDEDIR ?= $(PREFIX)/include
-BINDIR     ?= $(PREFIX)/bin
+# ==============================================================================
+# STDFRIGO MAKEFILE
+# ==============================================================================
 
+# 1. DIRETÓRIOS
+PREFIX      ?= /usr/local
+LIBDIR      ?= $(PREFIX)/lib
+INCLUDEDIR  ?= $(PREFIX)/include
+BINDIR      ?= $(PREFIX)/bin
+
+# 2. FERRAMENTAS
 CC      ?= gcc
 AR      ?= ar
 RANLIB  ?= ranlib
 INSTALL ?= install
 RM      ?= rm -f
 
+# 3. FLAGS
 CFLAGS  += -O3 -Wall -Wextra -std=c23 -flto -Iinclude
-HWFLAGS  = -msse4.2 -mrdrnd -mrdseed
 
-ALIAS   = $(wildcard alias/*.c)
+# 4. ARQUIVOS
 SRC     = $(wildcard src/*.c)
 OBJ     = $(SRC:.c=.o)
 LIBSTD  = libstdfrigo.a
@@ -20,22 +26,45 @@ LIBF    = libf.a
 HEADERS = $(wildcard include/*.h)
 PC_FILE = stdfrigo.pc
 
+# 5. DETECÇÃO DE OS
 UNAME_S := $(shell uname -s)
 ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
     EXE_EXT     := .exe
-    INSTALL_CMD := make install
+    LINK_CMD    := cp -f
+    CHECK_LINK  := test -f
 else
     EXE_EXT     :=
-    INSTALL_CMD := sudo make install
+    LINK_CMD    := ln -sf
+    CHECK_LINK  := test -L
 endif
 
-.PHONY: all clean install uninstall check
+# ==============================================================================
+# REGRAS PRINCIPAIS
+# ==============================================================================
 
-all: $(PC_FILE) $(LIBSTD) fcc f++
-	@echo "Biblioteca $(LIBSTD) e utilitários fcc/f++ gerados com sucesso."
-	@echo "Para instalar, execute: $(INSTALL_CMD)"
+.PHONY: all clean install uninstall check test
+
+all: $(LIBSTD) $(PC_FILE) fcc f++
+	@echo "=================================================="
+	@echo " Build Completo: $(LIBSTD)"
+	@echo " Utilitários:    fcc, f++"
+	@echo "=================================================="
+
+$(LIBSTD): $(OBJ)
+	$(AR) rcs $@ $(OBJ)
+	$(RANLIB) $@
+
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+fcc: alias/fcc.c
+	$(CC) $(CFLAGS) $< -o $@
+
+f++: alias/f++.c
+	$(CC) $(CFLAGS) $< -o $@
 
 $(PC_FILE):
+	@echo "Generating $@..."
 	@echo "prefix=$(PREFIX)" > $@
 	@echo "exec_prefix=\$${prefix}" >> $@
 	@echo "libdir=\$${prefix}/lib" >> $@
@@ -44,59 +73,101 @@ $(PC_FILE):
 	@echo "Name: stdfrigo" >> $@
 	@echo "Description: High performance NeoLibC suite" >> $@
 	@echo "Version: 1.0.0" >> $@
-	@echo "Cflags: -I\$${includedir} $(HWFLAGS)" >> $@
+	@echo "Cflags: -I\$${includedir}" >> $@
 	@echo "Libs: -L\$${libdir} -lstdfrigo" >> $@
 
-$(LIBSTD): $(OBJ)
-	$(AR) rcs $@ $(OBJ)
-	$(RANLIB) $@
+# ==============================================================================
+# INSTALAÇÃO
+# ==============================================================================
 
-fcc: alias/fcc.c
-	$(CC) $(CFLAGS) $< -o $@
+install: all
+	@echo "Instalando em $(DESTDIR)$(PREFIX)..."
+	
+	# 1. Criar Diretórios
+	@mkdir -p $(DESTDIR)$(INCLUDEDIR)
+	@mkdir -p $(DESTDIR)$(LIBDIR)/pkgconfig
+	@mkdir -p $(DESTDIR)$(BINDIR)
 
-f++: alias/f++.c
-	$(CC) $(CFLAGS) $< -o $@
+	# 2. Instalar Headers
+	$(INSTALL) -m 644 $(HEADERS) $(DESTDIR)$(INCLUDEDIR)
 
-src/%.o: src/%.c
-	$(CC) $(CFLAGS) $(HWFLAGS) -c $< -o $@
+	# 3. Instalar Biblioteca e criar Link Simbólico (libf.a -> libstdfrigo.a)
+	$(INSTALL) -m 644 $(LIBSTD) $(DESTDIR)$(LIBDIR)
+	@cd $(DESTDIR)$(LIBDIR) && $(LINK_CMD) $(LIBSTD) $(LIBF)
+
+	# 4. Instalar pkg-config
+	$(INSTALL) -m 644 $(PC_FILE) $(DESTDIR)$(LIBDIR)/pkgconfig/
+
+	# 5. Instalar Binários
+	$(INSTALL) -m 755 fcc$(EXE_EXT) $(DESTDIR)$(BINDIR)/fcc$(EXE_EXT)
+	$(INSTALL) -m 755 f++$(EXE_EXT) $(DESTDIR)$(BINDIR)/f++$(EXE_EXT)
+	@cd $(DESTDIR)$(BINDIR) && $(LINK_CMD) f++$(EXE_EXT) fpp$(EXE_EXT)
+
+	@echo "=========================================="
+	@echo " INSTALL SUCCESS: Library ready."
+	@echo " Location: $(DESTDIR)$(PREFIX)"
+	@echo "=========================================="
+
+uninstall:
+	@echo "Removendo arquivos de $(DESTDIR)$(PREFIX)..."
+	$(RM) $(addprefix $(DESTDIR)$(INCLUDEDIR)/, $(notdir $(HEADERS)))
+	$(RM) $(DESTDIR)$(LIBDIR)/$(LIBSTD)
+	$(RM) $(DESTDIR)$(LIBDIR)/$(LIBF)
+	$(RM) $(DESTDIR)$(LIBDIR)/pkgconfig/$(PC_FILE)
+	$(RM) $(DESTDIR)$(BINDIR)/fcc$(EXE_EXT)
+	$(RM) $(DESTDIR)$(BINDIR)/f++$(EXE_EXT)
+	$(RM) $(DESTDIR)$(BINDIR)/fpp$(EXE_EXT)
+
+	@echo "=========================================="
+	@echo " UNINSTALL COMPLETE: System cleaned."
+	@echo " Todos os arquivos da lib foram removidos."
+	@echo "=========================================="
 
 clean:
-	$(RM) src/*.o $(LIBSTD) $(PC_FILE) fcc f++
+	$(RM) src/*.o $(LIBSTD) $(LIBF) $(PC_FILE) fcc$(EXE_EXT) f++$(EXE_EXT) test1$(EXE_EXT)
 
-install: all $(PC_FILE)
-	@echo "Instalando em $(PREFIX)..."
-	@mkdir -p $(INCLUDEDIR)
-	@mkdir -p $(LIBDIR)/pkgconfig
-	@mkdir -p $(BINDIR)
-	$(INSTALL) -m 644 $(HEADERS) $(INCLUDEDIR)
-	$(INSTALL) -m 644 $(LIBSTD) $(LIBDIR)
-	ln -sf $(LIBDIR)/$(LIBSTD) $(LIBDIR)/$(LIBF)
-	$(INSTALL) -m 644 $(PC_FILE) $(LIBDIR)/pkgconfig/
-	$(INSTALL) -m 755 fcc$(EXE_EXT) $(BINDIR)/fcc$(EXE_EXT)
-	$(INSTALL) -m 755 f++$(EXE_EXT) $(BINDIR)/f++$(EXE_EXT)
-	ln -sf $(BINDIR)/f++ $(BINDIR)/fpp
-	@echo "Instalação concluída."
+	@echo "================================================="
+	@echo " [CLEAN] Objetos, Libs e Executáveis removidos."
+	@echo " Diretório limpo e pronto para recompilar."
+	@echo "================================================="
 
-uninstall: 
-	@echo "Removendo arquivos de $(PREFIX)..."
-	$(RM) $(addprefix $(INCLUDEDIR)/, $(notdir $(HEADERS))) 
-	$(RM) $(LIBDIR)/$(LIBSTD) 
-	$(RM) $(LIBDIR)/$(LIBF)
-	$(RM) $(LIBDIR)/pkgconfig/$(PC_FILE)
-	$(RM) $(BINDIR)/fcc $(BINDIR)/f++ $(BINDIR)/fpp 
-	@echo "Desinstalação concluída."
+# ==============================================================================
+# TESTES
+# ==============================================================================
 
 check:
-	@echo "Verificando instalação..."
+	@echo "Verificando integridade da instalação em $(DESTDIR)$(PREFIX)..."
+
+	# 1. Verificar Headers (Loop por todos os arquivos definidos em HEADERS)
 	@for h in $(notdir $(HEADERS)); do \
-		if [ -f $(INCLUDEDIR)/$$h ]; then echo "OK: Header $$h encontrado."; \
-		else echo "ERRO: $$h ausente."; exit 1; fi; \
+		if [ ! -f $(DESTDIR)$(INCLUDEDIR)/$$h ]; then \
+			echo "ERRO CRÍTICO: Header '$$h' não foi encontrado em $(DESTDIR)$(INCLUDEDIR)."; \
+			exit 1; \
+		fi; \
 	done
-	@if [ -f $(LIBDIR)/$(LIBSTD) ]; then echo "OK: Biblioteca $(LIBSTD) encontrada."; \
-	else echo "ERRO: $(LIBSTD) ausente."; exit 1; fi
-	@if [ -f $(LIBDIR)/pkgconfig/$(PC_FILE) ]; then echo "OK: Config $(PC_FILE) encontrada."; \
-	else echo "ERRO: $(PC_FILE) ausente."; exit 1; fi
-	@if [ -x $(BINDIR)/fcc ]; then echo "OK: Binário fcc encontrado."; \
-	else echo "ERRO: fcc ausente."; exit 1; fi
-	@if [ -x $(BINDIR)/f++ ]; then echo "OK: Binário f++ encontrado."; \
-	else echo "ERRO: f++ ausente."; exit 1; fi
+	@echo " [OK] Todos os headers encontrados."
+
+	# 2. Verificar Bibliotecas (Arquivo real + Symlink)
+	@test -f $(DESTDIR)$(LIBDIR)/$(LIBSTD) || (echo "ERRO: $(LIBSTD) ausente." && exit 1)
+	@$(CHECK_LINK) $(DESTDIR)$(LIBDIR)/$(LIBF)   || (echo "ERRO: Symlink $(LIBF) quebrado ou ausente." && exit 1)
+	@echo " [OK] Bibliotecas estáticas encontradas."
+
+	# 3. Verificar Pkg-Config
+	@test -f $(DESTDIR)$(LIBDIR)/pkgconfig/$(PC_FILE) || (echo "ERRO: Arquivo $(PC_FILE) ausente." && exit 1)
+	@echo " [OK] Integração pkg-config confirmada."
+
+	# 4. Verificar Binários e Symlinks
+	@test -x $(DESTDIR)$(BINDIR)/fcc$(EXE_EXT) || (echo "ERRO: Binário 'fcc' ausente ou sem permissão de execução." && exit 1)
+	@test -x $(DESTDIR)$(BINDIR)/f++$(EXE_EXT) || (echo "ERRO: Binário 'f++' ausente ou sem permissão de execução." && exit 1)
+	@$(CHECK_LINK) $(DESTDIR)$(BINDIR)/fpp$(EXE_EXT) || (echo "ERRO: Symlink 'fpp' ausente." && exit 1)
+	@echo " [OK] Utilitários de linha de comando encontrados."
+
+	@echo "========================================"
+	@echo " SUCESSO: Instalação 100% verificada."
+	@echo "========================================"
+
+test: $(LIBSTD)
+	@echo "Compilando testes..."
+	$(CC) $(CFLAGS) test/test1.c ./$(LIBSTD) -o test1
+	@echo "Rodando testes..."
+	./test1

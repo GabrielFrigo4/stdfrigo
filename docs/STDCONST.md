@@ -6,7 +6,7 @@
 
  * **Precisão Máxima:** Constantes geradas para preencher exatamente a mantissa de `float` (24 bits) e `double` (53 bits).
  * **Tipagem Explícita:** Sufixos claros (`_32` para `float` e `_64` para `double`) que evitam conversões implícitas e garantem o uso de literais imediatos.
- * **Otimização por Inversão:** Fornece versões `INV_X` (1/x) para substituir divisões lentas por multiplicações rápidas em loops críticos.
+ * **Otimização por Inversão:** Fornece versões `X_INV` (1/x) para substituir divisões lentas por multiplicações rápidas em loops críticos.
  * **Filosofia NeoLibC:** Sem dependências externas, garantindo que o compilador insira os valores diretamente no binário.
 
 ---
@@ -23,12 +23,12 @@
  Valores de raízes comuns e seus inversos multiplicativos.
 
  * **Raízes:** `SQRT2` (√2), `SQRT3`, `SQRT5`.
- * **Inversos:** `INV_SQRT2` (1/√2), fundamental para normalização de vetores unitários.
+ * **Inversos:** `SQRT2_INV` (1/√2), fundamental para normalização de vetores unitários.
 
 ### 3. Proporção Áurea (Phi Inverso)
  Constantes baseadas na Proporção Áurea (ϕ⁻¹), amplamente utilizadas em algoritmos de espalhamento (Hashing) e Fibonacci.
 
- * **Uso:** A constante `PHI_INV_64` é a base para os mixers de alta performance da `stdhash`.
+ * **Uso:** A constante `PHI_INV_HASH_64` é a base para os mixers de alta performance da `stdhash`.
 
 ### 4. Primos de Mersenne
  Números da forma 2ⁿ - 1. Em binário, consistem em uma sequência contínua de bits `1`.

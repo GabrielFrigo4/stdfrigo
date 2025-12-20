@@ -1,12 +1,7 @@
 #ifndef STDRAND_H
 #define STDRAND_H
 
-#ifndef STDFRIGO_LIB
-#define STDFRIGO_LIB
-#ifdef _MSC_VER
-#pragma comment(lib, "libstdfrigo.a")
-#endif
-#endif
+#include <stdfrigo_defs.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -208,57 +203,63 @@ static inline void rand_hw_seed(uint64_t *out) {
 
 // clang-format off
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-#define rand_next(rng)                                                                                                 \
-    _Generic((rng),                                                                                                    \
-        rand32_t *: rand32_next,                                                                                       \
-        rand64_t *: rand64_next,                                                                                       \
-        rand_float_t *: rand_float_next,                                                                               \
-        rand_double_t *: rand_double_next)(rng)
+#define rand_next(rng) _Generic((rng), \
+    rand32_t *:      rand32_next,      \
+    rand64_t *:      rand64_next,      \
+    rand_float_t *:  rand_float_next,  \
+    rand_double_t *: rand_double_next  \
+)(rng)
 
-#define rand_init(seed, out)                                                                                           \
-    _Generic((out),                                                                                                    \
-        rand32_t *: (void)(*(rand32_t *)(out) = rand32_init(seed)),                                                    \
-        rand64_t *: (void)(*(rand64_t *)(out) = rand64_init(seed)),                                                    \
-        rand_float_t *: (void)(*(rand_float_t *)(out) = rand_float_init(seed)),                                        \
-        rand_double_t *: (void)(*(rand_double_t *)(out) = rand_double_init(seed)))
+#define rand_init(seed, out) _Generic((out), \
+    rand32_t *:      (void)(*out = rand32_init(seed)),      \
+    rand64_t *:      (void)(*out = rand64_init(seed)),      \
+    rand_float_t *:  (void)(*out = rand_float_init(seed)),  \
+    rand_double_t *: (void)(*out = rand_double_init(seed))  \
+)
 
-#define rand_seed(rng, seed)                                                                                           \
-    _Generic((rng),                                                                                                    \
-        rand32_t *: rand32_seed,                                                                                       \
-        rand64_t *: rand64_seed,                                                                                       \
-        rand_float_t *: rand_float_seed,                                                                               \
-        rand_double_t *: rand_double_seed)(rng, seed)
+#define rand_seed(rng, seed) _Generic((rng), \
+    rand32_t *:      rand32_seed,            \
+    rand64_t *:      rand64_seed,            \
+    rand_float_t *:  rand_float_seed,        \
+    rand_double_t *: rand_double_seed        \
+)(rng, seed)
 
-#define rand_jump(rng)                                                                                                 \
-    _Generic((rng),                                                                                                    \
-        rand32_t *: rand32_jump,                                                                                       \
-        rand64_t *: rand64_jump,                                                                                       \
-        rand_float_t *: rand_float_jump,                                                                               \
-        rand_double_t *: rand_double_jump)(rng)
+#define rand_jump(rng) _Generic((rng), \
+    rand32_t *:      rand32_jump,      \
+    rand64_t *:      rand64_jump,      \
+    rand_float_t *:  rand_float_jump,  \
+    rand_double_t *: rand_double_jump  \
+)(rng)
 
-#define rand_bound(rng, limit)                                                                                         \
-    _Generic((rng),                                                                                                    \
-        rand32_t *: rand32_bound,                                                                                      \
-        rand64_t *: rand64_bound,                                                                                      \
-        rand_float_t *: rand_float_bound,                                                                              \
-        rand_double_t *: rand_double_bound)(rng, limit)
+#define rand_bound(rng, limit) _Generic((rng), \
+    rand32_t *:      rand32_bound,             \
+    rand64_t *:      rand64_bound,             \
+    rand_float_t *:  rand_float_bound,         \
+    rand_double_t *: rand_double_bound         \
+)(rng, limit)
 
-#define rand_range(rng, min, max)                                                                                      \
-    _Generic((rng),                                                                                                    \
-        rand32_t *: rand32_range,                                                                                      \
-        rand64_t *: rand64_range,                                                                                      \
-        rand_float_t *: rand_float_range,                                                                              \
-        rand_double_t *: rand_double_range)(rng, min, max)
+#define rand_range(rng, min, max) _Generic((rng), \
+    rand32_t *:      rand32_range,                \
+    rand64_t *:      rand64_range,                \
+    rand_float_t *:  rand_float_range,            \
+    rand_double_t *: rand_double_range            \
+)(rng, min, max)
 
 #if defined(__x86_64__) || defined(_M_X64)
-#define rand_hw_fast(out) _Generic((out), uint32_t *: rand32_hw_fast, uint64_t *: rand64_hw_fast)(out)
+#define rand_hw_fast(out) _Generic((out), \
+    uint32_t *: rand32_hw_fast,           \
+    uint64_t *: rand64_hw_fast            \
+)(out)
 
-#define rand_hw_entropy(out) _Generic((out), uint32_t *: rand32_hw_entropy, uint64_t *: rand64_hw_entropy)(out)
+#define rand_hw_entropy(out) _Generic((out), \
+    uint32_t *: rand32_hw_entropy,           \
+    uint64_t *: rand64_hw_entropy            \
+)(out)
 
-#define rand_hw_seed(out)                                                                                              \
-    _Generic((out),                                                                                                    \
-        uint32_t *: (void)(*(uint32_t *)(out) = rand32_hw_seed()),                                                     \
-        uint64_t *: (void)(*(uint64_t *)(out) = rand64_hw_seed()))
+#define rand_hw_seed(out) _Generic((out),        \
+    uint32_t *: (void)(*out = rand32_hw_seed()), \
+    uint64_t *: (void)(*out = rand64_hw_seed())  \
+)
 #endif
 #endif
 // clang-format on
