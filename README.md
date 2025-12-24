@@ -104,8 +104,12 @@
  Para que o shell encontre os comandos `fcc/f++` e o compilador encontre as bibliotecas automaticamente, adicione as linhas abaixo ao seu arquivo de configuração (ex: `.bashrc` ou `.zshrc`):
 
  ```bash
+ # GNU Compiler Collection
+ GCC_VER=$(g++ -dumpversion)
+ GCC_ARCH=$(g++ -dumpmachine)
+
  # 1. Executáveis (fcc, f++, fpp)
- export PATH="$PATH:$(cygpath -m /usr/local/bin)"
+ export PATH="$PATH:/usr/local/bin"
 
  # 2. Headers C e C++ (.h)
  export C_INCLUDE_PATH="$(cygpath -m /usr/local/include)"
