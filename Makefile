@@ -12,7 +12,36 @@ RM      ?= rm -f
 CFLAGS   := -std=c23 -O2 -fstack-protector-strong -fPIE -flto
 WFLAGS   := -Wformat=2 -Wall -Wextra -Wvla -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror -Wno-cpp -Wno-missing-field-initializers -Wno-unknown-warning-option
 CPPFLAGS := -Iinclude -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=202405L -D_FORTIFY_SOURCE=2
-LDFLAGS  := -flto -pie -Wl,-z,relro,-z,now
+LDFLAGS  := -flto
+
+UNAME_S := $(shell uname -s)
+ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S))$(filter Windows_NT,$(OS)))
+    PLATFORM := WINDOWS
+else ifeq ($(UNAME_S),Darwin)
+    PLATFORM := MACOS
+else
+    PLATFORM := LINUX
+endif
+
+LDFLAGS_WINDOWS    := -Wl,--dynamicbase,--nxcompat
+EXE_EXT_WINDOWS    := .exe
+LINK_CMD_WINDOWS   := cp -f
+CHECK_LINK_WINDOWS := test -f
+
+LDFLAGS_LINUX      := -pie -Wl,-z,relro,-z,now
+EXE_EXT_LINUX      :=
+LINK_CMD_LINUX     := ln -sf
+CHECK_LINK_LINUX   := test -L
+
+LDFLAGS_MACOS      :=
+EXE_EXT_MACOS      :=
+LINK_CMD_MACOS     := ln -sf
+CHECK_LINK_MACOS   := test -L
+
+LDFLAGS_PLATFORM := $(LDFLAGS_$(PLATFORM))
+EXE_EXT          := $(EXE_EXT_$(PLATFORM))
+LINK_CMD         := $(LINK_CMD_$(PLATFORM))
+CHECK_LINK       := $(CHECK_LINK_$(PLATFORM))
 
 SRC     = $(wildcard src/*.c)
 OBJ     = $(SRC:.c=.o)
@@ -20,17 +49,6 @@ LIBSTD  = libstdfrigo.a
 LIBF    = libf.a
 HEADERS = $(wildcard include/*.h)
 PC_FILE = stdfrigo.pc
-
-UNAME_S := $(shell uname -s)
-ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
-    EXE_EXT     := .exe
-    LINK_CMD    := cp -f
-    CHECK_LINK  := test -f
-else
-    EXE_EXT     :=
-    LINK_CMD    := ln -sf
-    CHECK_LINK  := test -L
-endif
 
 .PHONY: all clean install uninstall check test
 
@@ -45,13 +63,13 @@ $(LIBSTD): $(OBJ)
 	$(RANLIB) $@
 
 src/%.o: src/%.c
-	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) -c $< -o $@
 
 fcc: alias/fcc.c
-	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDFLAGS_PLATFORM) $< -o $@
 
 f++: alias/f++.c
-	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDFLAGS_PLATFORM) $< -o $@
 
 $(PC_FILE):
 	@echo "Generating $@..."
@@ -128,6 +146,6 @@ check:
 
 test: $(LIBSTD)
 	@echo "Compilando testes..."
-	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) test/test1.c ./$(LIBSTD) -o test1
+	$(CC) $(CFLAGS) $(WFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDFLAGS_PLATFORM) test/test1.c ./$(LIBSTD) -o test1$(EXE_EXT)
 	@echo "Rodando testes..."
-	./test1
+	./test1$(EXE_EXT)
