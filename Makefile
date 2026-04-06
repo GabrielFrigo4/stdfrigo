@@ -9,10 +9,10 @@ RANLIB  ?= ranlib
 INSTALL ?= install
 RM      ?= rm -f
 
-CFLAGS   := -std=c23 -O2 -fstack-protector-strong
-WFLAGS   := -Wformat=2 -Wall -Wextra -Wvla -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror -Wno-cpp
+CFLAGS   := -std=c23 -O2 -fstack-protector-strong -fPIE
+WFLAGS   := -Wformat=2 -Wall -Wextra -Wvla -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror -Wno-cpp -Wno-missing-field-initializers -Wno-unknown-warning-option
 CPPFLAGS := -Iinclude -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=202405L -D_FORTIFY_SOURCE=2
-LDFLAGS  := -flto
+LDFLAGS  := -flto -pie -Wl,-z,relro,-z,now
 
 SRC     = $(wildcard src/*.c)
 OBJ     = $(SRC:.c=.o)
